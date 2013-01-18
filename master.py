@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import argparse, signal, sys, time
+import argparse, signal, sys, time, urllib.request
 
 __author__ = "Phil Shaw"
 __version__ = 1.0
@@ -30,10 +30,14 @@ def main(args):
 	opts = parser.parse_args()
 
 	# start of program
-	while True:
-		time.sleep(5)
-		if opts.verbose:
-			print("hi")
+	with urllib.request.urlopen('http://www.google.com/finance?q=NASDAQ:NYMT') as f:
+		content = f.read().decode('utf-8')
+	markerClassPrice = """<span class="pr">"""
+	mindex = content.find(markerClassPrice)
+	price = content[mindex+len(markerClassPrice):mindex+100]
+	price = price[price.find('>')+1:price.find("</span>")]
+	print(price)
+
 
 if __name__ == "__main__":
 	sys.exit(main(sys.argv[1:]))
