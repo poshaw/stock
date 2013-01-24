@@ -5,7 +5,7 @@ import argparse, signal, sys, time, urllib.request
 
 __author__ = "Phil Shaw"
 __version__ = 1.0
-__copyright__ = "Copyright (c) 2012 Flogistix"
+__copyright__ = "Copyright (c) 2012"
 
 def signal_handler(signum, frame):
 	"""
