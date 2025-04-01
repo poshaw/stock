@@ -19,5 +19,6 @@ python -m venv .venv
 source .venv/Scripts/activate
 ```
 3. Install dependencies
+
 DOTO
 
