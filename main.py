@@ -8,16 +8,7 @@ def load_tickers(filename="tickers.txt"):
         return [line.strip().upper() for line in f if line.strip()]
 
 def main(argv):
-    '''
-    symbol = "MSFT"
-    try:
-        cik = get_cik_for_ticker(symbol)
-        print(f"CIK for {symbol.upper()}: {cik}")
-    except Exception as e:
-        print(f"Error: {e}")
-    '''
     ticker_cik_map = ticker_cik_map()
-    
     print(tickers)
     
     
