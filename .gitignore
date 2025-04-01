@@ -1,0 +1,12 @@
+# Ignore virtual environment
+.venv/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+
+# Other OS-specific files
+.DS_Store
+Thumbs.db
