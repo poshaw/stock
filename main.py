@@ -11,7 +11,6 @@ def main(argv):
     ticker_cik_map = ticker_cik_map()
     print(tickers)
     
-    
     return 0
 
 if __name__ == "__main__":
