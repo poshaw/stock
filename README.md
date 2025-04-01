@@ -19,6 +19,12 @@ python -m venv .venv
 source .venv/Scripts/activate
 ```
 3. Install dependencies
+```
+python -m pip install --upgrade pip requests
+```
 
-DOTO
 
+4. Run tests
+```
+python -m unittest discover -s test
+```
