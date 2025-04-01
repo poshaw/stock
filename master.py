@@ -1,5 +1,4 @@
 #! /usr/bin/python3
-# -*- coding: utf-8 -*-
 
 import argparse, signal, sys, time, urllib.request
 
