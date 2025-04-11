@@ -14,6 +14,13 @@ def create_table_if_not_exists(conn):
             PRIMARY KEY (ticker, date, metric)
         );
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS fetch_log (
+            ticker TEXT,
+            metric TEXT,
+            fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
     conn.commit()
 
 def insert_metric_data(conn, ticker, metric_key, entries):
@@ -34,4 +41,29 @@ def insert_metric_data(conn, ticker, metric_key, entries):
             ON CONFLICT(ticker, date, metric) DO UPDATE SET value = excluded.value
         """
         cursor.execute(sql, (ticker, end_date, metric_key, value))
+    conn.commit()
+
+def log_fetch(conn, ticker, metric):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO fetch_log (ticker, metric)
+        VALUES (?, ?)
+    """, (ticker, metric))
+    conn.commit()
+
+def was_fetched_recently(conn, ticker, metric, days=7):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT MAX(fetched_at) FROM fetch_log
+        WHERE ticker = ? AND metric = ? AND fetched_at > datetime('now', ?)
+    """, (ticker, metric, f'-{days} days'))
+    recent = cursor.fetchone()[0]
+    return bool(recent)
+
+def prune_old_fetch_logs(conn, months=3):
+    cursor = conn.cursor()
+    cursor.execute("""
+        DELETE FROM fetch_log
+        WHERE fetched_at < datetime('now', ?)
+    """, (f'-{months} months',))
     conn.commit()
