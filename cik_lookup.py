@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 
 import requests
+from EDGAR_tags import HEADERS
 
 url = "https://www.sec.gov/files/company_tickers.json"
-headers = {
-        "User-Agent": "Phil Shaw posop@hotmail.com"
-}
 
 def get_cik(ticker: str) -> str:
     """
     Looks up a single ticker's CIK using live data from the SEC.
     """
     
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=HEADERS)
     if response.status_code != 200:
         raise Exception("Failed to fetch data from SEC.")
     
