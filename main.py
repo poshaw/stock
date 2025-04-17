@@ -33,11 +33,23 @@ def process_ticker(conn, ticker, cik, metric_key, tag):
         return
 
     logger.info(f"Getting metric '{metric_key}' for ticker '{ticker}' with CIK {cik}")
-    tag_data = edgar.fetch_tag_data(cik, tag)
-    results = edgar.extract_last_5_10k_values(tag_data)
-    db.insert_metric_data(conn, ticker, metric_key, results)
-    db.log_fetch(conn, ticker, metric_key)
-    print_metric_data(conn, ticker, metric_key)
+    try:
+        tag_data = edgar.fetch_tag_data(cik, tag)
+        results = edgar.extract_last_5_10k_values(tag_data)
+
+        if not results:
+            logger.warning(f"No 10-K data found for {ticker} and tag '{tag}'. Skipping.")
+            return
+
+        db.insert_metric_data(conn, ticker, metric_key, results)
+        db.log_fetch(conn, ticker, metric_key)
+        print_metric_data(conn, ticker, metric_key)
+
+    except requests.HTTPError as e:
+        logger.error(f"HTTP error while fetching data for {ticker}: {e}")
+    except Exception as e:
+        logger.error(f"Error processing {ticker}: {e}")
+
 
 def main(argv):
     # Set logging level based on verbosity flags
