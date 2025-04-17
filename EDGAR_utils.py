@@ -1,44 +1,48 @@
 #!/usr/bin/env python3
 
+from database import get_db_connection, get_cik_from_db, save_cik_to_db
 import requests
 from EDGAR_tags import HEADERS
 
-url = "https://www.sec.gov/files/company_tickers.json"
 
 def get_cik(ticker: str) -> str:
     """
-    Looks up a single ticker's CIK using live data from the SEC.
+    First check local DB for CIK. If not found, fetch from SEC and cache.
     """
-    
+    ticker = ticker.upper()
+    conn = get_db_connection()
+    cik = get_cik_from_db(conn, ticker)
+    if cik:
+        return cik
+
+    url = "https://www.sec.gov/files/company_tickers.json"
     response = requests.get(url, headers=HEADERS)
     if response.status_code != 200:
         raise Exception("Failed to fetch data from SEC.")
-    
     data = response.json()
-    ticker = ticker.upper()
-    
+
     for entry in data.values():
         if entry["ticker"] == ticker:
-            return str(entry["cik_str"]).zfill(10)
-            
+            cik = str(entry["cik_str"]).zfill(10)
+            save_cik_to_db(conn, ticker, cik)
+            return cik
+
     raise ValueError(f"Ticker '{ticker}' not found in SEC database.")
     
-def ticker_cik_map(filename="tickers.txt") -> dict:
-    """
-    Reads tickers from tickers.txt file and returns a {ticker: CIK} dictionary.
-    """
-    
-    with open(filename, "r") as f:
-        tickers = [line.strip().upper() for line in f if line.strip()]
-    
+def ticker_cik_map(domestic_file="tickers.txt", foreign_file="foreign_tickers.txt") -> dict:
+    all_tickers = []
+    with open(domestic_file, "r") as f:
+        all_tickers += [line.strip().upper() for line in f if line.strip()]
+    with open(foreign_file, "r") as f:
+        all_tickers += [line.strip().upper() for line in f if line.strip()]
+
     result = {}
-    for ticker in tickers:
+    for ticker in all_tickers:
         try:
             cik = get_cik(ticker)
             result[ticker] = cik
         except ValueError:
-            result[ticker] = None  # or skip if you prefer
-
+            result[ticker] = None
     return result
 
 def fetch_tag_data(cik, tag):
@@ -55,20 +59,22 @@ def extract_last_5_10k_values(tag_data):
         print("No USD records found.")
         return []
 
-    # Filter only 10-K filings
-    ten_ks = [entry for entry in records if entry.get("form") == "10-K"]
+    # Accept both 10-K and 20-F (foreign annual reports)
+    annual_forms = {"10-K", "20-F"}
+    annuals = [entry for entry in records if entry.get("form") in annual_forms]
+
 
     # Remove duplicates based on the "end" date
     seen = set()
-    unique_10ks = []
-    for entry in ten_ks:
+    unique_annuals = []
+    for entry in annuals:
         end_date = entry.get("end")
         if end_date and end_date not in seen:
             seen.add(end_date)
-            unique_10ks.append(entry)
+            unique_annuals.append(entry)
 
     # Sort by end date descending
-    unique_10ks.sort(key=lambda x: x["end"], reverse=True)
+    unique_annuals.sort(key=lambda x: x["end"], reverse=True)
 
     # Return last 5
-    return unique_10ks[:5]
+    return unique_annuals[:5]

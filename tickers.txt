@@ -11,5 +11,4 @@ SPOK
 STX
 T
 TEL
-TSM
 XOM

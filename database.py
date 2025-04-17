@@ -21,7 +21,14 @@ def create_table_if_not_exists(conn):
             fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ticker_cik (
+            ticker TEXT PRIMARY KEY,
+            cik TEXT
+        );
+    """)
     conn.commit()
+
 
 def insert_metric_data(conn, ticker, metric_key, entries):
     cursor = conn.cursor()
@@ -66,4 +73,19 @@ def prune_old_fetch_logs(conn, months=3):
         DELETE FROM fetch_log
         WHERE fetched_at < datetime('now', ?)
     """, (f'-{months} months',))
+    conn.commit()
+
+def get_cik_from_db(conn, ticker):
+    cursor = conn.cursor()
+    cursor.execute("SELECT cik FROM ticker_cik WHERE ticker = ?", (ticker.upper(),))
+    result = cursor.fetchone()
+    return result[0] if result else None
+
+def save_cik_to_db(conn, ticker, cik):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO ticker_cik (ticker, cik)
+        VALUES (?, ?)
+        ON CONFLICT(ticker) DO UPDATE SET cik = excluded.cik
+    """, (ticker.upper(), cik))
     conn.commit()
