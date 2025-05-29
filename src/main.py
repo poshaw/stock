@@ -1,12 +1,16 @@
-#!/usr/bin/env python3
+# src/main.py
 
 import argparse
 import csv
 import logging
 import requests
+import sys
 
 from src.domestic import get_cik, get_gaap_tag, extract_quarterly_values
-from src.foreign import get_foreign_metric_data
+from src.foreign import get_foreign_metric_data, get_foreign_filing_index
+from src.tag_map import TAGS
+from src.domestic import get_cached_or_fetch_json
+from src.ticker import Ticker
 
 logger = logging.getLogger("main")
 
@@ -37,85 +41,38 @@ def parse_args():
     return parser.parse_args()
 
 def load_tickers(csv_file="tickers.csv"):
-    domestic = []
-    foreign = []
+    tickers = []
 
     try:
         with open(csv_file, "r", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 ticker = row["ticker"].strip().upper()
-                is_foreign = row.get("is_foreign", "").strip().lower() == "true"
-
-                if is_foreign:
-                    foreign.append(ticker)
-                else:
-                    domestic.append(ticker)
+                tickers.append(ticker)
 
     except FileNotFoundError:
         logger.error(f"Ticker file not found: {csv_file}")
     except Exception as e:
         logger.exception(f"Error reading {csv_file}: {e}")
 
-    return domestic, foreign
+    return tickers
 
 def main(argv):
     args = parse_args()
     configure_logging(args.verbose)
 
     logger.info("Starting ticker load...")
-    domestic, foreign = load_tickers()
-    logger.info(f"Loaded {len(domestic)} domestic tickers: {domestic}")
-    logger.info(f"Loaded {len(foreign)} foreign tickers: {foreign}")
+    tickers = load_tickers()
+    logger.info(f"Loaded {len(tickers)} tickers: {tickers}")
 
-    TAG = "NetCashProvidedByUsedInOperatingActivities"
-    cik_map = {}
+    ticker_objects = {}
 
-    all_tickers = domestic + foreign
-
-    # Step 1: Get CIKs
-    for ticker in all_tickers:
+    # Step 1: Initialize each Ticker
+    for ticker_str in tickers:
         try:
-            cik = get_cik(ticker, force=args.force)
-            cik_map[ticker] = cik
-            logger.info(f"{ticker} → CIK: {cik}")
+            t = Ticker(ticker_str)
+            t.load_operating_cash_flow()
+            ticker_objects[t.symbol] = t
+            logger.info(f"Initialized Ticker: {t.symbol} | CIK: {t.cik} | Exchange: {t.exchange} | Sector: {t.sector}")
         except Exception as e:
-            logger.error(f"Failed to fetch CIK for {ticker}: {e}")
-
-    # Step 2: Try fetching GAAP data; fallback to 20-F if needed
-    for ticker, cik in cik_map.items():
-        try:
-            tag_data = get_gaap_tag(ticker, cik, TAG, force=args.force)
-            entries = extract_quarterly_values(tag_data)
-
-            if not entries:
-                logger.warning(f"{ticker}: No quarterly values found for tag '{TAG}'")
-            else:
-                for entry in entries:
-                    logger.info(f"{ticker} {entry['end']}: {entry['val']:,}")
-
-        except requests.HTTPError as e:
-            if e.response.status_code == 404:
-                logger.warning(f"{ticker}: Tag '{TAG}' not found on SEC (404)")
-
-                if ticker in foreign:
-                    fallback_values = get_foreign_metric_data(
-                        ticker=ticker,
-                        cik=cik,
-                        tag_key=TAG,
-                        tag_search_list=["Operating Cash Flow", "Net cash provided by operating activities"],
-                        force=args.force
-                    )
-
-                    if fallback_values:
-                        for result in fallback_values:
-                            logger.info(f"{ticker} (20-F {result['date']}): {result['val']:,}")
-                    else:
-                        logger.warning(f"{ticker}: No data found in 20-F fallback for tag '{TAG}'")
-            else:
-                logger.error(f"{ticker}: HTTP error fetching tag '{TAG}': {e}")
-
-        except Exception as e:
-            logger.error(f"{ticker}: Unexpected error processing tag '{TAG}': {e}")
-
-    return 0
+            logger.error(f"Failed to initialize Ticker '{ticker_str}': {e}")
