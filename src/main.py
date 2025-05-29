@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import csv
-import sys
 import argparse
+import csv
 import logging
-from src.sec import get_cik
+import requests
+from src.sec import get_cik, get_gaap_tag, extract_quarterly_values
 
 logger = logging.getLogger("main")
 
@@ -61,21 +61,76 @@ def load_tickers(csv_file="tickers.csv"):
 def main(argv):
     args = parse_args()
     configure_logging(args.verbose)
-    logger.info("Starting ticker load...")
 
+    # grab the tickers from tickers.csv
+    logger.info("Starting ticker load...")
     domestic, foreign = load_tickers()
     logger.info(f"Loaded {len(domestic)} domestic tickers: {domestic}")
     logger.info(f"Loaded {len(foreign)} foreign tickers: {foreign}")
 
+    # match tickers to CIK numbers from sec.gov using cached data if available
     all_tickers = domestic + foreign
+    TAG = "NetCashProvidedByUsedInOperatingActivities"
+    cik_map = {}
+
     for ticker in all_tickers:
         try:
             cik = get_cik(ticker, force=args.force)
+            cik_map[ticker] = cik
             logger.info(f"{ticker} → CIK: {cik}")
         except Exception as e:
             logger.error(f"Failed to fetch CIK for {ticker}: {e}")
 
-    return 0
+    for ticker, cik in cik_map.items():
+        try:
+            tag_data = get_gaap_tag(ticker, cik, TAG, force=args.force)
+            entries = extract_quarterly_values(tag_data)
 
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+            if not entries:
+                logger.warning(f"{ticker}: No quarterly values found for tag '{TAG}'")
+            else:
+                for entry in entries:
+                    logger.info(f"{ticker} {entry['end']}: {entry['val']:,}")
+
+        except requests.HTTPError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"{ticker}: Tag '{TAG}' not found on SEC (404)")
+            else:
+                logger.error(f"{ticker}: HTTP error fetching tag '{TAG}': {e}")
+        except Exception as e:
+            logger.error(f"{ticker}: Unexpected error processing tag '{TAG}': {e}")
+
+
+
+
+            logger.info(f"{ticker} → CIK: {cik}")
+
+            #tag_data = get_gaap_tag(ticker, cik, TAG, force=args.force)
+            #entries = extract_quarterly_values(tag_data)
+
+            #for entry in entries:
+            #    logger.info(f"{ticker} {entry['end']}: {entry['val']:,}")
+
+            try:
+                tag_data = get_gaap_tag(ticker, cik, TAG, force=args.force)
+                entries = extract_quarterly_values(tag_data)
+
+                if not entries:
+                    logger.warning(f"{ticker}: No quarterly values found for tag '{TAG}'")
+                else:
+                    for entry in entries:
+                        logger.info(f"{ticker} {entry['end']}: {entry['val']:,}")
+
+            except requests.HTTPError as e:
+                if e.response.status_code == 404:
+                    logger.warning(f"{ticker}: Tag '{TAG}' not found on SEC (404)")
+                else:
+                    logger.error(f"{ticker}: HTTP error fetching tag '{TAG}': {e}")
+            except Exception as e:
+                logger.error(f"{ticker}: Unexpected error processing tag '{TAG}': {e}")
+
+
+        except Exception as e:
+            logger.error(f"Failed to process {ticker}: {e}")
+
+    return 0

@@ -69,3 +69,33 @@ def get_cik(ticker: str, force=False):
             return str(entry["cik_str"]).zfill(10)
 
     raise ValueError(f"CIK not found for ticker: {ticker}")
+
+def get_gaap_tag(ticker: str, cik: str, tag: str, force=False, max_age_days=90):
+    path = f"data/cache/{ticker.lower()}/{tag}.json"
+    url = f"https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{tag}.json"
+
+    def fetch_tag_data():
+        time.sleep(1)  # avoid rate limiting
+        logger.debug(f"Requesting: {url}")
+        response = requests.get(url, headers=HEADERS)
+        logger.debug(f"Tag fetch response: {response.status_code}")
+        response.raise_for_status()
+        return response.json()
+
+    return get_cached_or_fetch_json(path, fetch_tag_data, max_age_days, force=force)
+
+def extract_quarterly_values(tag_data, limit=20):
+    records = tag_data.get("units", {}).get("USD", [])
+    quarterlies = [
+        entry for entry in records
+        if entry.get("form") == "10-Q" and "end" in entry and "val" in entry
+    ]
+
+    # Deduplicate by end date (keep first seen)
+    seen = {}
+    for entry in sorted(quarterlies, key=lambda x: x["end"], reverse=True):
+        end = entry["end"]
+        if end not in seen:
+            seen[end] = entry
+
+    return list(seen.values())[:limit]
