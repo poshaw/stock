@@ -1,4 +1,7 @@
-# Ignore virtual environment
+# Personal config
+src/config.py
+
+# Virtual environment
 .venv/
 
 # Python artifacts
@@ -6,15 +9,16 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-
-# Other OS-specific files
+# OS-specific files
 .DS_Store
 Thumbs.db
 .nvimlog
 
-# Database artifacts
+# Cache and generated data
+data/
+logs/
+database/
 *.db
 
-# Environment Variables
+# Environment variables
 .env
-src/fetch/sec_headers.py
