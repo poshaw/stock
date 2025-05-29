@@ -8,6 +8,7 @@ src/config.py
 __pycache__/
 *.py[cod]
 *.egg-info/
+test.py
 
 # OS-specific files
 .DS_Store
