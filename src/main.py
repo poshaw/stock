@@ -4,7 +4,9 @@ import argparse
 import csv
 import logging
 import requests
-from src.sec import get_cik, get_gaap_tag, extract_quarterly_values
+
+from src.domestic import get_cik, get_gaap_tag, extract_quarterly_values
+from src.foreign import get_foreign_metric_data
 
 logger = logging.getLogger("main")
 
@@ -18,7 +20,7 @@ def configure_logging(verbosity):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="SEC data fetcher")
-    
+
     parser.add_argument(
         "-v", "--verbose",
         action="count",
@@ -33,7 +35,6 @@ def parse_args():
     )
 
     return parser.parse_args()
-
 
 def load_tickers(csv_file="tickers.csv"):
     domestic = []
@@ -62,17 +63,17 @@ def main(argv):
     args = parse_args()
     configure_logging(args.verbose)
 
-    # grab the tickers from tickers.csv
     logger.info("Starting ticker load...")
     domestic, foreign = load_tickers()
     logger.info(f"Loaded {len(domestic)} domestic tickers: {domestic}")
     logger.info(f"Loaded {len(foreign)} foreign tickers: {foreign}")
 
-    # match tickers to CIK numbers from sec.gov using cached data if available
-    all_tickers = domestic + foreign
     TAG = "NetCashProvidedByUsedInOperatingActivities"
     cik_map = {}
 
+    all_tickers = domestic + foreign
+
+    # Step 1: Get CIKs
     for ticker in all_tickers:
         try:
             cik = get_cik(ticker, force=args.force)
@@ -81,6 +82,7 @@ def main(argv):
         except Exception as e:
             logger.error(f"Failed to fetch CIK for {ticker}: {e}")
 
+    # Step 2: Try fetching GAAP data; fallback to 20-F if needed
     for ticker, cik in cik_map.items():
         try:
             tag_data = get_gaap_tag(ticker, cik, TAG, force=args.force)
@@ -95,42 +97,25 @@ def main(argv):
         except requests.HTTPError as e:
             if e.response.status_code == 404:
                 logger.warning(f"{ticker}: Tag '{TAG}' not found on SEC (404)")
+
+                if ticker in foreign:
+                    fallback_values = get_foreign_metric_data(
+                        ticker=ticker,
+                        cik=cik,
+                        tag_key=TAG,
+                        tag_search_list=["Operating Cash Flow", "Net cash provided by operating activities"],
+                        force=args.force
+                    )
+
+                    if fallback_values:
+                        for result in fallback_values:
+                            logger.info(f"{ticker} (20-F {result['date']}): {result['val']:,}")
+                    else:
+                        logger.warning(f"{ticker}: No data found in 20-F fallback for tag '{TAG}'")
             else:
                 logger.error(f"{ticker}: HTTP error fetching tag '{TAG}': {e}")
+
         except Exception as e:
             logger.error(f"{ticker}: Unexpected error processing tag '{TAG}': {e}")
-
-
-
-
-            logger.info(f"{ticker} → CIK: {cik}")
-
-            #tag_data = get_gaap_tag(ticker, cik, TAG, force=args.force)
-            #entries = extract_quarterly_values(tag_data)
-
-            #for entry in entries:
-            #    logger.info(f"{ticker} {entry['end']}: {entry['val']:,}")
-
-            try:
-                tag_data = get_gaap_tag(ticker, cik, TAG, force=args.force)
-                entries = extract_quarterly_values(tag_data)
-
-                if not entries:
-                    logger.warning(f"{ticker}: No quarterly values found for tag '{TAG}'")
-                else:
-                    for entry in entries:
-                        logger.info(f"{ticker} {entry['end']}: {entry['val']:,}")
-
-            except requests.HTTPError as e:
-                if e.response.status_code == 404:
-                    logger.warning(f"{ticker}: Tag '{TAG}' not found on SEC (404)")
-                else:
-                    logger.error(f"{ticker}: HTTP error fetching tag '{TAG}': {e}")
-            except Exception as e:
-                logger.error(f"{ticker}: Unexpected error processing tag '{TAG}': {e}")
-
-
-        except Exception as e:
-            logger.error(f"Failed to process {ticker}: {e}")
 
     return 0

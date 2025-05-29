@@ -28,7 +28,7 @@ source .venv/bin/activate  # or .venv/Scripts/activate on Windows
 
 Install dependencies:
 ```bash
-python -m pip install --upgrade pip requests
+python -m pip install --upgrade pip requests beautifulsoup4
 ```
 
 ---

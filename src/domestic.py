@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import logging
 import time
 
-logger = logging.getLogger("sec")
+logger = logging.getLogger("domestic")
 
 def ensure_dir(path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
