@@ -75,6 +75,12 @@ def parse_args():
         help="Force re-fetch all cached data"
     )
 
+    parser.add_argument(
+            "--tickers",
+            default="tickers.csv",
+            help="Path to ticker CSV"
+    )
+
     return parser.parse_args()
 
 def load_tickers(csv_file="tickers.csv"):
@@ -116,30 +122,35 @@ def load_tickers(csv_file="tickers.csv"):
     logger.info(f"Loaded {len(tickers)} tickers: \n\t{tickers}")
     return tickers
 
-def main(argv):
+def main(verbosity: int, force: bool, csv_file: str = "tickers.csv"):
     """
-    Main entry point for the SEC data pipeline.
+    Main entry point for the SEC data processing pipeline.
 
     Parameters:
     ----------
-    argv : list of str
-        Command-line arguments passed to the script (typically sys.argv[1:]).
+    verbosity : int
+        Controls logging level (0=WARNING, 1=INFO, 2=DEBUG).
+    force : bool
+        If True, bypasses cached data and forces refetch from SEC.
+    csv_file : str, optional
+        Path to a CSV file containing ticker symbols under the column "ticker".
+        Defaults to "tickers.csv".
 
     Workflow:
     --------
-    - Parses CLI arguments to determine verbosity and cache behavior.
-    - Loads tickers from a CSV file.
-    - For each ticker:
-        - Instantiates a dictionary of Ticker objects.
-        - Loads operating cash flow data (10-K or 20-F based).
-        - Stores metadata in a dictionary for future use.
-    
-    Errors during ticker initialization are logged but do not halt execution.
-    """
-    args = parse_args()
-    configure_logging(args.verbose)
+    1. Loads ticker symbols from the specified CSV file.
+    2. For each ticker:
+        - Initializes a Ticker object.
+        - Loads or fetches operating cash flow data (10-K or 20-F).
+        - Stores the Ticker instance in a dictionary.
+        - Logs a formatted summary of the ticker's metadata and metrics.
 
-    tickers = load_tickers()
+    Notes:
+    -----
+    - Errors during individual ticker initialization are logged and do not halt execution.
+    - The final output is logged via each Ticker's __str__ method.
+    """
+    tickers = load_tickers(csv_file)
 
     ticker_objects = {}
 
@@ -153,3 +164,9 @@ def main(argv):
 
         except Exception as e:
             logger.error(f"Failed to initialize Ticker '{ticker}': {e}")
+
+if __name__ == "__main__":
+    args = parse_args()
+    configure_logging(args.verbose)
+    sys.exit(main(verbosity=args.verbose, force=args.force, csv_file=args.tickers))
+

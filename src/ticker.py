@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-import inspect
 import json
 import logging
 import os
@@ -49,7 +48,6 @@ class Ticker:
     metrics: dict = field(default_factory=dict)
 
     def __post_init__(self):
-        logger.debug(f"method {inspect.currentframe().f_code.co_name} called")
         self.ticker = self.ticker.upper()
         self.submission_data = self._load_or_fetch_submissions()
         self._extract_metadata()
@@ -70,7 +68,6 @@ class Ticker:
         return False
 
     def _load_or_fetch_submissions(self, max_age_days=7):
-        logger.debug(f"method {inspect.currentframe().f_code.co_name} called")
         path = f"data/cache/{self.ticker}/submissions.json"
 
         if not self._is_cache_expired(path, max_age_days):
