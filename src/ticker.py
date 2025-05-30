@@ -36,15 +36,15 @@ class Ticker:
         Raw data loaded from SEC submissions endpoint.
     metrics : dict
         Cached financial metrics, such as operating cash flow.
-    is_foreign : bool
-        Whether the company files 20-F (foreign) or 10-K (domestic).
+    is_domestic : bool
+        Whether the company files 10-K (domestic) or 20-F (foreign).
     """
     ticker: str
     cik: str = field(init=False)
     company_name: str = field(init=False)
     exchange: str = field(init=False)
     sector: str = field(init=False, default="Unknown")
-    is_foreign: bool = field(init=False)
+    is_domestic: bool = field(init=False)
     submission_data: dict = field(init=False, repr=False)
     metrics: dict = field(default_factory=dict)
 
@@ -125,13 +125,23 @@ class Ticker:
         self.sector = SIC_SECTOR_MAP.get(str(sic)[:2], "Unknown") if sic else "Unknown"
 
     def _determine_filer_type(self):
+        """
+        Determine whether the company is a domestic filer (files 10-K)
+        or a foreign filer (files 20-F).
+
+        Sets:
+        ----
+        self.is_domestic : bool
+            True if the company files 10-Ks, otherwise False.
+        """
         try:
             forms = self.submission_data.get("filings", {}).get("recent", {}).get("form", [])
-            self.is_foreign = any(f.strip().upper() == "20-F" for f in forms)
-            logger.debug(f"{self.ticker}: Filing type determined → {'Foreign (20-F)' if self.is_foreign else 'Domestic (GAAP)'}")
+            self.is_domestic = any(f.strip().upper() == "10-K" for f in forms)
+            logger.debug(f"{self.ticker}: Filing type determined → {'Domestic (10-K)' if self.is_domestic else 'Foreign (20-F)'}")
         except Exception as e:
             logger.warning(f"{self.ticker}: Failed to determine filer type, defaulting to Domestic. Error: {e}")
-            self.is_foreign = False
+            self.is_domestic = True
+
 
     def load_operating_cash_flow(self, max_age_days=7):
         tag_key = "operating_cash_flow"
@@ -159,6 +169,7 @@ class Ticker:
             f" CIK     : {self.cik}",
             f" Sector  : {self.sector}",
             f" Exchange: {self.exchange}",
+            f" Domestic: {self.is_domestic}",
             ""
         ]
 
