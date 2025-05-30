@@ -2,19 +2,43 @@
 
 import argparse
 import csv
+import inspect
 import logging
 import requests
 import sys
 
-from src.domestic import get_cik, get_gaap_tag, extract_quarterly_values
-from src.foreign import get_foreign_metric_data, get_foreign_filing_index
+from src.domestic import (
+    get_cik,
+    get_gaap_tag,
+    extract_quarterly_values,
+    get_cached_or_fetch_json,
+)
+
+from src.foreign import (
+    get_foreign_metric_data,
+    get_foreign_filing_index,
+)
+
 from src.tag_map import TAGS
-from src.domestic import get_cached_or_fetch_json
 from src.ticker import Ticker
 
 logger = logging.getLogger("main")
 
 def configure_logging(verbosity):
+    """
+    Configure the global logging level based on user-specified verbosity.
+
+    Parameters:
+    ----------
+    verbosity : int
+        Determines the logging level:
+        - 0: WARNING (default)
+        - 1: INFO
+        - 2 or higher: DEBUG
+
+    This function sets the logging level globally using logging.basicConfig().
+    Useful for controlling how much detail is shown during program execution.
+    """
     if verbosity >= 2:
         logging.basicConfig(level=logging.DEBUG)
     elif verbosity == 1:
@@ -23,7 +47,20 @@ def configure_logging(verbosity):
         logging.basicConfig(level=logging.WARNING)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="SEC data fetcher")
+    """
+    Parse command-line arguments for the SEC data tool.
+
+    Returns:
+    -------
+    argparse.Namespace
+        An object containing parsed arguments:
+        - verbose (int): Controls logging verbosity. Use -v or -vv for INFO/DEBUG.
+        - force (bool): If True, bypasses cache and forces re-fetch of data.
+
+    This function defines and parses command-line flags using argparse, providing
+    user control over verbosity and data refresh behavior.
+    """
+    parser = argparse.ArgumentParser(description="Fetch and analyze SEC filing data for stock evaluation")
 
     parser.add_argument(
         "-v", "--verbose",
@@ -41,6 +78,27 @@ def parse_args():
     return parser.parse_args()
 
 def load_tickers(csv_file="tickers.csv"):
+    """
+    Load a list of tickers from a CSV file.
+
+    Parameters:
+    ----------
+    csv_file : str
+        Path to a CSV file containing a column named 'ticker'. Default is 'tickers.csv'.
+
+    Returns:
+    -------
+    list of str
+        A list of uppercased tickers read from the file.
+
+    Notes:
+    -----
+    - The CSV file must contain a column named 'ticker'.
+    - Leading/trailing whitespace is stripped, and tickers are converted to uppercase.
+    - Logs an error if the file is missing or malformed.
+    """
+    logger.debug(f"method {inspect.currentframe().f_code.co_name} called")
+    logger.info(f"Loading tickers[] from {csv_file}")
     tickers = []
 
     try:
@@ -55,24 +113,43 @@ def load_tickers(csv_file="tickers.csv"):
     except Exception as e:
         logger.exception(f"Error reading {csv_file}: {e}")
 
+    logger.info(f"Loaded {len(tickers)} tickers: \n\t{tickers}")
     return tickers
 
 def main(argv):
+    """
+    Main entry point for the SEC data pipeline.
+
+    Parameters:
+    ----------
+    argv : list of str
+        Command-line arguments passed to the script (typically sys.argv[1:]).
+
+    Workflow:
+    --------
+    - Parses CLI arguments to determine verbosity and cache behavior.
+    - Loads tickers from a CSV file.
+    - For each ticker:
+        - Instantiates a dictionary of Ticker objects.
+        - Loads operating cash flow data (10-K or 20-F based).
+        - Stores metadata in a dictionary for future use.
+    
+    Errors during ticker initialization are logged but do not halt execution.
+    """
     args = parse_args()
     configure_logging(args.verbose)
 
-    logger.info("Starting ticker load...")
     tickers = load_tickers()
-    logger.info(f"Loaded {len(tickers)} tickers: {tickers}")
 
     ticker_objects = {}
 
     # Step 1: Initialize each Ticker
-    for ticker_str in tickers:
+    for ticker in tickers:
         try:
-            t = Ticker(ticker_str)
+            t = Ticker(ticker)
             t.load_operating_cash_flow()
-            ticker_objects[t.symbol] = t
-            logger.info(f"Initialized Ticker: {t.symbol} | CIK: {t.cik} | Exchange: {t.exchange} | Sector: {t.sector}")
+            ticker_objects[t.ticker] = t
+            logger.info("%s", t)  # Prints the Ticker __str__ method
+
         except Exception as e:
-            logger.error(f"Failed to initialize Ticker '{ticker_str}': {e}")
+            logger.error(f"Failed to initialize Ticker '{ticker}': {e}")
