@@ -143,6 +143,12 @@ class Ticker:
     def load_operating_cash_flow(self, max_age_days=7):
         tag_key = "operating_cash_flow"
         tag_list = TAGS[tag_key]
+        
+        if self.is_domestic:
+            self._load_domestic_ocf()
+        else:
+            self._load_foreign_ocf()
+
 
         if tag_key in self.metrics:
             logger.debug(f"{self.ticker}: Using in-memory metric for {tag_key}")
