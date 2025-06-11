@@ -11,7 +11,7 @@ logger = logging.getLogger("utils")
 def is_cache_expired(path: str, max_age_days: int = 7) -> bool:
     if not os.path.exists(path):
         logger.debug(f"No data cached for {path}")
-        return true
+        return True
 
     mtime = datetime.fromtimestamp(os.path.getmtime(path))
     age = datetime.now() - mtime
@@ -21,3 +21,6 @@ def is_cache_expired(path: str, max_age_days: int = 7) -> bool:
 
     logger.debug(f"Cache valid for {path} (age: {age.days} days)")
     return False
+
+def ensure_dir(path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
