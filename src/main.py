@@ -3,14 +3,11 @@
 import argparse
 import csv
 import logging
-import requests
-import sys
 
-from src.domestic import get_cik, get_gaap_tag, extract_quarterly_values
-from src.foreign import get_foreign_metric_data, get_foreign_filing_index
-from src.tag_map import TAGS
-from src.domestic import get_cached_or_fetch_json
-from src.ticker import Ticker
+from .fetch import (
+        sec_data,
+        update_company_tickers,
+)
 
 logger = logging.getLogger("main")
 
@@ -61,18 +58,10 @@ def main(argv):
     args = parse_args()
     configure_logging(args.verbose)
 
-    logger.info("Starting ticker load...")
     tickers = load_tickers()
     logger.info(f"Loaded {len(tickers)} tickers: {tickers}")
 
-    ticker_objects = {}
+    update_company_tickers()
 
-    # Step 1: Initialize each Ticker
-    for ticker_str in tickers:
-        try:
-            t = Ticker(ticker_str)
-            t.load_operating_cash_flow()
-            ticker_objects[t.symbol] = t
-            logger.info(f"Initialized Ticker: {t.symbol} | CIK: {t.cik} | Exchange: {t.exchange} | Sector: {t.sector}")
-        except Exception as e:
-            logger.error(f"Failed to initialize Ticker '{ticker_str}': {e}")
+    for t in tickers:
+        sec_data(t)
