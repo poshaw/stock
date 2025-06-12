@@ -7,6 +7,7 @@ import logging
 from .fetch import (
         sec_data,
         update_company_tickers,
+        get_last_filing_date
 )
 
 logger = logging.getLogger("main")
