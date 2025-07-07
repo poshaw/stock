@@ -32,6 +32,7 @@ from .utils import (
 
 logger = logging.getLogger("fetch")
 
+SLEEP_SECONDS = 1.5  # Avoid SEC throttle limits
 
 # Global cache
 _ticker_cik_cache = {}
@@ -194,7 +195,7 @@ def get_next_expected_filing_date(ticker: str) -> Optional[datetime]:
     return next_filing_date
 
 
-def sec_data(ticker: str):
+def sec_data(ticker: str, force: bool = False):
     logger.info(f"Processing ticker: {ticker}")
     cik = get_cik(ticker)
     ensure_dir(get_cache_path(ticker))
@@ -202,12 +203,13 @@ def sec_data(ticker: str):
     for metric, tag_list in TAGS.items():
         path = os.path.join(get_cache_path(ticker), f"{metric}.json")
 
-        if not is_cache_stale(path, ticker):
+        if not is_cache_stale(path, ticker) and not force:
             logger.debug(f"{ticker}: {metric} cache is still valid — skipping download.")
             continue
 
+        time.sleep(SLEEP_SECONDS) 
         for tag in tag_list:
-            time.sleep(2)  # avoid SEC rate limits
+            time.sleep(SLEEP_SECONDS) 
             namespace, tagname = tag.split(":")
             url = f"https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/{namespace}/{tagname}.json"
             logger.debug(f"{ticker}: Requesting {url}")

@@ -36,6 +36,19 @@ def parse_args():
         help="Force re-fetch all cached data"
     )
 
+
+    parser.add_argument(
+        "--fetch",
+        nargs="+",
+        help="Fetch SEC data for one or more tickers (e.g. --fetch MSFT TSM"
+    )
+
+    parser.add_argument(
+        "--fetchall",
+        action="store_true",
+        help="Fetch SEC data for all tickers in tickers.csv"
+    )
+
     return parser.parse_args()
 
 def load_tickers(csv_file="tickers.csv"):
@@ -58,11 +71,18 @@ def load_tickers(csv_file="tickers.csv"):
 def main(argv):
     args = parse_args()
     configure_logging(args.verbose)
-
-    tickers = load_tickers()
-    logger.info(f"Loaded {len(tickers)} tickers: {tickers}")
-
     update_company_tickers()
 
+    if args.fetchall:
+        tickers = load_tickers()
+    elif args.fetch:
+        tickers = [t.upper() for t in args.fetch]
+    else:
+        logger.warning("No action specified. Use --fetch or --fetchall.")
+        return
+
+    logger.info(f"Fetching data for: {tickers}")
+
+
     for t in tickers:
-        sec_data(t)
+        sec_data(t, force=args.force)
