@@ -1,29 +1,31 @@
 # 📈 Stock: SEC EDGAR Data Tracker
 
-This Python script fetches, stores, and analyzes financial data for public companies using SEC EDGAR filings.
+A Python-based CLI tool to fetch, cache, and analyze financial data for public companies using SEC EDGAR filings.
 
 ## 🚀 Features
 
-- Pulls financial data (e.g., Operating Cash Flow) from [sec.gov](https://www.sec.gov) EDGAR XBRL API
-- Tracks multiple tickers defined in `tickers.txt`
-- Stores data in a local SQLite database (`edgar_data.db`)
-- Skips duplicate SEC requests by logging fetch times
-- CLI interface with verbosity flags (`-v`, `-vv`)
-- Easily extendable to support additional financial metrics
+- Pulls structured financial data (e.g., Operating Cash Flow, Net Income, CapEx) via [sec.gov](https://www.sec.gov) XBRL API
+- Supports both US GAAP (`10-K`, `10-Q`) and IFRS (`20-F`) filers
+- Smart caching system avoids redundant requests and saves bandwidth
+- Customizable ticker tracking via `tickers.csv`
+- SQLite integration (optional) for historical persistence (`edgar_data.db`)
+- CLI-based control with logging verbosity and cache override options
+- Easily extendable with custom financial metrics and tag mappings
 
 ---
 
 ## ⚙️ Setup
 
 ```bash
-git clone git@github.com:poshaw/stock.git
+git clone https://github.com/poshaw/stock.git
 cd stock
-```
+
 
 Create a virtual environment:
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # or .venv/Scripts/activate on Windows
+source .venv/bin/activate  # Linux/macOS
+source .venv/Scripts/activate # Windows
 ```
 
 Install dependencies:
@@ -44,19 +46,41 @@ python -m unittest discover -s test
 ## 📊 Usage
 
 ```bash
-python main.py -v
+python main.py [OPTIONS]
 ```
 
-- `-v`: enables INFO-level output
-- `-vv`: enables DEBUG-level output
+### Common Options
 
-The script will:
-- Loop over tickers in `tickers.txt`
-- Pull the latest 10-K Operating Cash Flow data
-- Store it in `edgar_data.db`
-- Avoid redundant SEC calls if fetched within the last week
+- --fetch MSFT TSM – Fetch data for one or more specific tickers
 
----
+- --fetchall – Fetch data for all tickers listed in tickers.csv
 
+- --force – Force re-fetch all data, ignoring cache
 
+- -v, -vv – Set logging verbosity (INFO or DEBUG)
 
+### Examples
+```bash
+# Fetch all tickers from tickers.csv using cache
+python run.py --fetchall
+
+# Fetch all tickers and force fresh data
+python run.py --fetchall --force
+
+# Fetch data only for MSFT
+python run.py --fetch MSFT
+
+# Force fresh fetch just for TSM
+python run.py --fetch TSM --force
+```
+
+## 🧠 What It Does
+- Loads ticker symbols from tickers.csv (or from --fetch)
+- Fetches EDGAR filings and financial metric data via the SEC XBRL API
+- Tries multiple fallback tags per metric to increase reliability
+- Stores each metric to data/cache/{ticker}/{metric}.json
+- Supports both domestic (10-K, 10-Q) and foreign (20-F) filers
+- Optionally persists or analyzes data via SQLite (edgar_data.db)
+
+## 🛠️ Extend It
+- To track more metrics, add new entries to src/tag_map.py
