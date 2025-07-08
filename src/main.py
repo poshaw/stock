@@ -5,9 +5,7 @@ import csv
 import logging
 
 from .fetch import (
-        sec_data,
-        update_company_tickers,
-        get_last_filing_date
+        run_fetch
 )
 
 logger = logging.getLogger("main")
@@ -36,14 +34,22 @@ def parse_args():
         help="Force re-fetch all cached data"
     )
 
-
     parser.add_argument(
+        "--tickersPath",
+        default="tickers.csv",
+        help="Path to CSV file containing tickers"
+    )
+
+
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
         "--fetch",
         nargs="+",
         help="Fetch SEC data for one or more tickers (e.g. --fetch MSFT TSM"
     )
 
-    parser.add_argument(
+    group.add_argument(
         "--fetchall",
         action="store_true",
         help="Fetch SEC data for all tickers in tickers.csv"
@@ -51,38 +57,14 @@ def parse_args():
 
     return parser.parse_args()
 
-def load_tickers(csv_file="tickers.csv"):
-    tickers = []
-
-    try:
-        with open(csv_file, "r", newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                ticker = row["ticker"].strip().upper()
-                tickers.append(ticker)
-
-    except FileNotFoundError:
-        logger.error(f"Ticker file not found: {csv_file}")
-    except Exception as e:
-        logger.exception(f"Error reading {csv_file}: {e}")
-
-    return tickers
 
 def main(argv):
     args = parse_args()
     configure_logging(args.verbose)
-    update_company_tickers()
 
-    if args.fetchall:
-        tickers = load_tickers()
-    elif args.fetch:
-        tickers = [t.upper() for t in args.fetch]
-    else:
-        logger.warning("No action specified. Use --fetch or --fetchall.")
-        return
-
-    logger.info(f"Fetching data for: {tickers}")
-
-
-    for t in tickers:
-        sec_data(t, force=args.force)
+    run_fetch(
+        force=args.force,
+        csv_file=args.tickersPath,
+        fetch=args.fetch,
+        fetchall=args.fetchall
+    )

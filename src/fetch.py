@@ -41,6 +41,22 @@ _ticker_cik_cache = {}
 def get_cache_path(ticker: str = "") -> str:
     return os.path.join("data", "cache", ticker.lower())
 
+def load_tickers(csv_file="tickers.csv"):
+    tickers = []
+
+    try:
+        with open(csv_file, "r", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                ticker = row["ticker"].strip().upper()
+                tickers.append(ticker)
+
+    except FileNotFoundError:
+        logger.error(f"Ticker file not found: {csv_file}")
+    except Exception as e:
+        logger.exception(f"Error reading {csv_file}: {e}")
+
+    return tickers
 
 def update_company_tickers(max_age_days=30):
     """
@@ -231,4 +247,25 @@ def sec_data(ticker: str, force: bool = False):
                 logger.warning(f"{ticker}: Tag failed for {metric} ({tag}): {e}")
             except Exception as e:
                 logger.error(f"{ticker}: Unexpected error fetching tag {tag}: {e}")
+
+def run_fetch(
+        force: bool = False,
+        csv_file: str = "tickers.csv",
+        fetch: list[str] = None,
+        fetchall: bool = False
+    ):
+    update_company_tickers()
+
+    if fetchall:
+        tickers = load_tickers(csv_file)
+    elif fetch:
+        tickers = [t.upper() for t in fetch]
+    else:
+        logger.warning("No action specified. Use --fetch or --fetchall.")
+        return
+
+    logger.info(f"Fetching data for: {tickers}")
+
+    for t in tickers:
+        sec_data(t, force=force)
 
