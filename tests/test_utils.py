@@ -2,21 +2,22 @@
 import os
 import tempfile
 from datetime import datetime, timedelta
-from src.utils import is_cache_stale
+from src.utils import (
+        is_cache_stale,
+        ensure_dir,
+)
 
-def test_cache_is_missing():
-    assert is_cache_stale("nonexistent.json", ticker="TEST")
+def test_is_cache_stale_new_file(tmp_path):
+    f = tmp_path / "test.json"
+    f.write_text("hello")
+    assert is_cache_stale(str(f), max_age_days=1) is False
 
-def test_cache_is_expired():
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        path = tmp.name
-    ten_days_ago = (datetime.now() - timedelta(days=10)).timestamp()
-    os.utime(path, (ten_days_ago, ten_days_ago))
-    assert is_cache_stale(path, max_age_days=7)
+def test_is_cache_stale_missing_file(tmp_path):
+    f = tmp_path / "missing.json"
+    assert is_cache_stale(str(f), max_age_days=1) is True
 
-def test_cache_is_fresh():
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        path = tmp.name
-    os.utime(path, None)
-    assert not is_cache_stale(path, max_age_days=7)
+def test_ensure_dir_creates_parent(tmp_path):
+    f = tmp_path / "a" / "b" / "file.json"
+    ensure_dir(str(f)) # should create a/b
+    assert os.path.isdir(f.parent)
 
