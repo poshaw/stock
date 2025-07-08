@@ -16,10 +16,11 @@ A Python-based CLI tool to fetch, cache, and analyze financial data for public c
 
 ## ⚙️ Setup
 
+Fetch the latest from github:
 ```bash
 git clone https://github.com/poshaw/stock.git
 cd stock
-
+```
 
 Create a virtual environment:
 ```bash
@@ -30,7 +31,7 @@ source .venv/Scripts/activate # Windows
 
 Install dependencies:
 ```bash
-python -m pip install --upgrade pip requests beautifulsoup4
+python -m pip install --upgrade -r requirements.txt
 ```
 
 ---
@@ -50,36 +51,35 @@ python -m src.main [OPTIONS]
 ```
 
 ### Common Options
-
 - Fetch data for one or more specific tickers:  
-  ``--fetch MSFT TSM``
+``--fetch MSFT TSM``
 
 - Fetch data for all tickers listed in `tickers.csv`:  
-  ``--fetchall``
+``--fetchall``
 
 - Force re-fetch all data, ignoring cache:  
-  ``--force``
+``--force``
 
 - Set logging verbosity (INFO or DEBUG):  
-  ``-v``, ``-vv``
+``-v``, ``-vv``
 
 
 ### Examples
-```bash
-# Fetch all tickers from tickers.csv using cache
-python run.py --fetchall
+- Fetch all tickers from `tickers.csv` using cached data:  
+`python -m src.main --fetchall`
 
-# Fetch all tickers and force fresh data
-python run.py --fetchall --force
+- Fetch all tickers and force fresh data for each:  
+`python -m src.main --fetchall --force`
 
-# Fetch data only for MSFT
-python run.py --fetch MSFT
+- Fetch data only for the tickers `MSFT` and `TSM`:  
+`python -m src.main --fetch MSFT TSM`
 
-# Force fresh fetch just for TSM
-python run.py --fetch TSM --force
-```
+- Force a fresh fetch just for the ticker `TSM`:  
+`python -m src.main --fetch TSM --force`
+
 
 ## 🧠 What It Does
+### !!!so far only the fetch functionality is working!!!
 - Loads ticker symbols from tickers.csv (or from --fetch)
 - Fetches EDGAR filings and financial metric data via the SEC XBRL API
 - Tries multiple fallback tags per metric to increase reliability
