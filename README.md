@@ -46,18 +46,18 @@ python -m unittest discover -s test
 ## 📊 Usage
 
 ```bash
-python main.py [OPTIONS]
+python -m src.main [OPTIONS]
 ```
 
 ### Common Options
-
-- --fetch MSFT TSM – Fetch data for one or more specific tickers
-
-- --fetchall – Fetch data for all tickers listed in tickers.csv
-
-- --force – Force re-fetch all data, ignoring cache
-
-- -v, -vv – Set logging verbosity (INFO or DEBUG)
+– Fetch data for one or more specific tickers
+  - --fetch MSFT TSM
+– Fetch data for all tickers listed in tickers.csv
+  - --fetchall
+– Force re-fetch all data, ignoring cache
+  - --force
+– Set logging verbosity (INFO or DEBUG)
+  - -v, -vv
 
 ### Examples
 ```bash
