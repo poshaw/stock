@@ -50,14 +50,19 @@ python -m src.main [OPTIONS]
 ```
 
 ### Common Options
-– Fetch data for one or more specific tickers
-  - --fetch MSFT TSM
-– Fetch data for all tickers listed in tickers.csv
-  - --fetchall
-– Force re-fetch all data, ignoring cache
-  - --force
-– Set logging verbosity (INFO or DEBUG)
-  - -v, -vv
+
+- Fetch data for one or more specific tickers:  
+  ``--fetch MSFT TSM``
+
+- Fetch data for all tickers listed in `tickers.csv`:  
+  ``--fetchall``
+
+- Force re-fetch all data, ignoring cache:  
+  ``--force``
+
+- Set logging verbosity (INFO or DEBUG):  
+  ``-v``, ``-vv``
+
 
 ### Examples
 ```bash
