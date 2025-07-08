@@ -1,5 +1,6 @@
 # src/fetch.py
 
+import csv
 import json
 import logging
 import os
@@ -15,6 +16,11 @@ from datetime import (
 from typing import (
         Dict,
         Optional,
+)
+
+from concurrent.futures import (
+        ThreadPoolExecutor,
+        as_completed,
 )
 
 from .config import (
@@ -248,6 +254,8 @@ def sec_data(ticker: str, force: bool = False):
             except Exception as e:
                 logger.error(f"{ticker}: Unexpected error fetching tag {tag}: {e}")
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 def run_fetch(
         force: bool = False,
         csv_file: str = "tickers.csv",
@@ -266,6 +274,17 @@ def run_fetch(
 
     logger.info(f"Fetching data for: {tickers}")
 
-    for t in tickers:
-        sec_data(t, force=force)
+    def fetch_one(ticker: str):
+        try:
+            sec_data(ticker, force=force)
+            return ticker, "success"
+        except Exception as e:
+            logger.error(f"{ticker} failed: {e}")
+            return ticker, f"error: {e}"
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {executor.submit(fetch_one, t): t for t in tickers}
+        for future in as_completed(futures):
+            ticker, status = future.result()
+            logger.info(f"{ticker}: {status}")
 

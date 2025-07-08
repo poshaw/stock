@@ -1,8 +1,13 @@
 # src/main.py
 
 import argparse
-import csv
 import logging
+import os
+import sys
+
+from datetime import (
+        datetime
+)
 
 from .fetch import (
         run_fetch
@@ -10,13 +15,41 @@ from .fetch import (
 
 logger = logging.getLogger("main")
 
-def configure_logging(verbosity):
+def configure_logging(verbosity: int):
+    log_level = logging.WARNING  # default
     if verbosity >= 2:
-        logging.basicConfig(level=logging.DEBUG)
+        log_level = logging.DEBUG
     elif verbosity == 1:
-        logging.basicConfig(level=logging.INFO)
-    else:
-        logging.basicConfig(level=logging.WARNING)
+        log_level = logging.INFO
+
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+    log_filename = datetime.now().strftime("run_%Y%m%d_%H%M%S.log")
+    log_path = os.path.join(log_dir, log_filename)
+
+    # Create handlers
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(log_level)
+
+    file_handler = logging.FileHandler(log_path)
+    file_handler.setLevel(logging.DEBUG)  # Always save everything to file
+
+    # Formatter
+    formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+    console_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
+
+    # Clear root handlers and reconfigure
+    root = logging.getLogger()
+    root.handlers = []
+    root.setLevel(logging.DEBUG)  # Capture all levels globally
+    root.addHandler(console_handler)
+    root.addHandler(file_handler)
+
+    logging.debug(f"Logging initialized. Console level: {log_level}, File: {log_path}")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="SEC data fetcher")
@@ -68,3 +101,6 @@ def main(argv):
         fetch=args.fetch,
         fetchall=args.fetchall
     )
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

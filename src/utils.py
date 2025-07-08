@@ -41,5 +41,14 @@ def is_cache_stale(path: str, ticker: Optional[str] = None, max_age_days: int = 
     return False
 
 
-def ensure_dir(path):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+def ensure_dir(path: str):
+    """
+    Ensures the given path is a directory, or the parent directory of a file path.
+    If path ends with .json or similar, it treats it as a file path.
+    """
+    if os.path.splitext(path)[1]:  # has a file extension
+        dir_path = os.path.dirname(path)
+    else:
+        dir_path = path
+    os.makedirs(dir_path, exist_ok=True)
+
